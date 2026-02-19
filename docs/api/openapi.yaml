@@ -1,0 +1,198 @@
+openapi: 3.0.3
+info:
+  title: Resilient Transaction Processor API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/v1/health:
+    get:
+      summary: Healthcheck
+      responses:
+        "200":
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /api/v1/accounts:
+    post:
+      summary: Create account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountCreateRequest"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/accounts/{accountId}/balance:
+    get:
+      summary: Get account balance
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Balance returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BalanceResponse"
+        "404":
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/transactions:
+    post:
+      summary: Process transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionRequest"
+      responses:
+        "200":
+          description: Transaction applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        "409":
+          description: Idempotency conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/ledger:
+    get:
+      summary: Query ledger by account
+      parameters:
+        - name: accountId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ledger entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerResponse"
+components:
+  schemas:
+    AccountCreateRequest:
+      type: object
+      required: [accountId, initialBalance, currency]
+      properties:
+        accountId:
+          type: string
+        initialBalance:
+          type: number
+          format: double
+        currency:
+          type: string
+    AccountResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+        balance:
+          type: number
+          format: double
+        currency:
+          type: string
+    TransactionRequest:
+      type: object
+      required: [idempotencyKey, accountId, type, amount, currency]
+      properties:
+        idempotencyKey:
+          type: string
+        accountId:
+          type: string
+        type:
+          type: string
+          enum: [DEBIT, CREDIT]
+        amount:
+          type: number
+          format: double
+        currency:
+          type: string
+    TransactionResponse:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        status:
+          type: string
+          enum: [APPLIED, REJECTED]
+        balance:
+          type: number
+          format: double
+    BalanceResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+        balance:
+          type: number
+          format: double
+        currency:
+          type: string
+    LedgerEntry:
+      type: object
+      properties:
+        entryId:
+          type: string
+        transactionId:
+          type: string
+        type:
+          type: string
+          enum: [DEBIT, CREDIT]
+        amount:
+          type: number
+          format: double
+        createdAt:
+          type: string
+          format: date-time
+    LedgerResponse:
+      type: array
+      items:
+        $ref: "#/components/schemas/LedgerEntry"
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [UP]
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
